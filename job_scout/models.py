@@ -10,7 +10,7 @@ class JobSource(Enum):
     WELLFOUND = auto()
 
 @dataclass(frozen=True)
-class JObListing:
+class JobListing:
     id: str
     source: JobSource 
     title: str 
