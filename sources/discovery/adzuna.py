@@ -1,8 +1,10 @@
 from typing import List, Optional
 import httpx 
 from sources.base import DiscoverySource
+from models.job_url import JobUrl
 import os 
 from dotenv import load_dotenv
+
 load_dotenv()
 APP_ID = os.getenv("ADZUNA_APP_ID")
 APP_KEY = os.getenv("ADZUNA_APP_KEY")
@@ -13,7 +15,7 @@ if not APP_ID:
 if not APP_KEY:
     raise ValueError("Missing Adzuna App Key!")
 
-class AdzunaSource(DiscoverySource):
+class AdzunaDiscovery(DiscoverySource):
     def __init__(self, country: str = "us"):
         self.app_id = APP_ID
         self.app_key = APP_KEY
@@ -23,44 +25,52 @@ class AdzunaSource(DiscoverySource):
     def name(self) -> str:
         return "adzuna"
 
-    async def discover(self, query: str, location: Optional[str] = None,
-    limit: int =50, salary_min: Optional[int] = None, salary_min: Optional[int] = None, salary_max: Optional[int] = None, full_time: Optional[bool] = None,
-    permanent: Optional[bool] = None) -> List[str]:
-
+    async def discover(self, query:str, country: Optional[str] =  "gb", location: Optional[str] = None,  max_days_old: int = 7, results_per_page: int = 20, **kwargs,) -> List[JobUrl]:
+        url = f"{self.BASE_URL}/{country}/search/1"
         params = {
             "app_id":self.app_id,
             "app_key": self.app_key,
             "what": query,
-            "results_per_page": min(limit, 50),
+            "results_per_page": results_per_page,
+            "max_days_old": max_days_old,
             "content-type": "application/json",
         }
         if location:
             params['where'] = location
 
-        if salary_min is not None:
-            params["salary_min"] = salary_min
-        if salary_max is not None:
-            params["salary_max"] = salary_max
-
-        if full_time is True:
-            params["full_time"] = 1
-
-        if permanent is True:
-            params["permanent"] = 1
-
-        url = f"{BASE_URL}/{self.country}/search/1"
         async with httpx.AsyncClient(timeout = 30.0) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
 
         results = data.get("results", [])
-        urls = [r["redirect_url"] for r in results if r.get("redirect_url")]
+        discovered: List[JobUrl] = []
+        for raw in results:
+            redirect_url = raw.get("redirect_url")
+            if not redirect_url:
+                continue
 
-        return urls[:limit]
-
-
+            title = raw.get("title", "")
+            description = raw.get("description", "")
+            is_remote = sef._is_remote(title, description)
+            location_parts = raw.get("location", {}).get("area", [])
+            location_str = ", ".join(location_parts) if location_parts else None
         
+            discovered.append(JobUrl(
+                url=redirect_url,
+                title = title.strip(),
+                company=raw.get("company", {}).get("display_name", "Unknown"),
+                location=location_str,
+                is_remote=is_remote,
+                source=self.name,
+                raw=raw,
+            ))
 
+        return discovered
 
-        
+    def _is_remote(self, title: str, description: str) -> Optional[bool]:
+        text = f"{title} {description}".lower()
+        if any(w in text for w in ("remote", "work from home", "wfh", "anywhere")):
+            return True 
+
+        return None 
