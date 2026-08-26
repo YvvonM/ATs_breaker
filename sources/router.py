@@ -7,12 +7,12 @@ class Router:
         self._extractors: List[JobExtractor] = []
 
     def register(self, extractor: JobExtractor) -> None:
-        self._extractors.append(extractor)
+        if extractor not in self._extractors:
+            self._extractors.append(extractor)
 
     def register_many(self, extractors: List[JobExtractor]) -> None:
         for ext in extractors:
-            if ext in extractors:
-                self.register(ext)
+            self.register(ext)
 
     def route(self, url: str) -> Optional[JobExtractor]:
         for extractor in self._extractors:

@@ -1,3 +1,6 @@
 crawl4ai
 langchain-groq 
 langchain-core
+pytest 
+pytest-asyncio 
+httpx

@@ -10,7 +10,7 @@ class DiscoverySource(ABC):
         ...
 
     @abstractmethod 
-    async def discovery(self, *args, *kwargs) -> List[str]:
+    async def discover(self, *args, **kwargs) -> List[str]:
         ...
 
     
