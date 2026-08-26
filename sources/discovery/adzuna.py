@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 APP_ID = os.getenv("ADZUNA_APP_ID")
 APP_KEY = os.getenv("ADZUNA_APP_KEY")
-BASE_URL = "https://api.adzuna.com/v1/api/jobs"
+
 if not APP_ID:
     raise ValueError("Missing Adzuna App ID!")
 
@@ -16,10 +16,14 @@ if not APP_KEY:
     raise ValueError("Missing Adzuna App Key!")
 
 class AdzunaDiscovery(DiscoverySource):
+    BASE_URL = "https://api.adzuna.com/v1/api/jobs"
+
     def __init__(self, country: str = "us"):
-        self.app_id = APP_ID
-        self.app_key = APP_KEY
+        self.app_id = APP_ID or os.getenv("ADZUNA_APP_ID")
+        self.app_key = APP_KEY or os.getenv("ADZUNA_APP_KEY")
         self.country = country
+        if not self.app_id or self.app_key:
+            raise ValueError("AdzunaDiscovery requires ADZUNA_APP_ID and ADZUNA_APP_KEY")
 
     @property
     def name(self) -> str:
