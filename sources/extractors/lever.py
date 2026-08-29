@@ -30,7 +30,7 @@ class LevelExtractor(JobExtractor):
         if not parsed:
             return None
         company, job_id = parsed
-        api_url = f"https://api.lever.co/v0/postings/{company}/{posting_id}?mode=json"
+        api_url = f"https://api.lever.co/v0/postings/{company}/{job_id}?mode=json"
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 response = await client.get(api_url)
@@ -57,14 +57,14 @@ class LevelExtractor(JobExtractor):
         if salary_range:
             salary_min = salary_range.get("min")
             salary_max = salary_range.get("max")
-        responsibilities, requirements, preferred = [], [], []
+            responsibilities, requirements, preferred = [], [], []
         for lst in data.get('list', []):
             list_text = lst.get('text', '').lower()
             content = self._strip_html(lst.get('content', ''))
             if any(w in list_text for w in ["requirement", "must have", "qualification"]):
-                responsibilities.extend(self._split_list_items(content))
-            elif any(w in list_text for w in ["responsibilit", "what you'll do", "role"]):
                 requirements.extend(self._split_list_items(content))
+            elif any(w in list_text for w in ["responsibilit", "what you'll do", "role"]):
+                responsibilities.extend(self._split_list_items(content))
             else:
                 preferred.extend(self._split_list_items(content))
 

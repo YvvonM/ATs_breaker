@@ -11,18 +11,21 @@ class HackerNewsDiscovery(DiscoverySource):
         "relocate", "work permit", "work visa", "immigration", "green card",
         "relocation assistance", "will sponsor", "can sponsor", "visa transfer",
     ]
+    REMOTE_NEGATIONS = ["no remote", "not remote", "non-remote", "non remote"]
+    REMOTE_POSITIVE_OVERRIDES = ["remote ok", "remote-ok", "remote friendly", "fully remote", "100% remote"]
     URL_RE = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+', re.IGNORECASE)
 
     @property
     def name(self) -> str:
-        return "Hacker News"
+        return "hackernews"
 
-    async def discover(self, query: str, limit :int = 100, require_visa_friendly: bool = True, **kwargs) -> List[JobUrl]:
-        thread_id = await self._find_latest_hiring_thread()
-        if not thread_id:
-            return []
+    async def discover(self, query: str, limit: int = 100, require_visa_friendly: bool = True, **kwargs) -> List[JobUrl]:
+        async with httpx.AsyncClient(timeout=30) as client:
+            thread = await self._find_latest_hiring_thread(client)
+            if not thread:
+                return []
+            comments = await self._fetch_comments(client, thread, limit=limit * 3)
 
-        comments = await self._fetch_comments(thread_id, limit = limit * 3)
         query_lower = query.lower()
         discovered: List[JobUrl] = []
         for comment in comments:
@@ -40,8 +43,8 @@ class HackerNewsDiscovery(DiscoverySource):
             urls = self.URL_RE.findall(text_plain)
             url = urls[0] if urls else f"https://news.ycombinator.com/item?id={comment['id']}"
             discovered.append(JobUrl(
-                url = url,
-                title = self._extract_title(text_plain),
+                url=url,
+                title=self._extract_title(text_plain),
                 company=self._extract_company(text_plain),
                 location=self._extract_location(text_plain),
                 is_remote=is_remote,
@@ -55,36 +58,30 @@ class HackerNewsDiscovery(DiscoverySource):
             ))
 
             if len(discovered) >= limit:
-                break 
+                break
 
         return discovered
 
-    async def _find_latest_hiring_thread(self) -> Optional[int]:
+    async def _find_latest_hiring_thread(self, client: httpx.AsyncClient) -> Optional[dict]:
         url = f"{self.BASE_URL}/user/whoishiring.json"
-        async with httpx.AsyncClient(timeout = 30) as client:
-            data = (await client.get(url)).json()
+        data = (await client.get(url)).json()
 
         for item_id in data.get("submitted", []):
-            item = await self._fetch_item(item_id)
+            item = await self._fetch_item(client, item_id)
             if item and "who is hiring" in item.get("title", "").lower():
-                return item_id
+                return item
         return None
 
-        
-    async def _fetch_item(self, item_id: int) -> Optional[dict]:
+    async def _fetch_item(self, client: httpx.AsyncClient, item_id: int) -> Optional[dict]:
         url = f"{self.BASE_URL}/item/{item_id}.json"
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.get(url)
-            return r.json() if r.status_code == 200 else None
+        r = await client.get(url)
+        return r.json() if r.status_code == 200 else None
 
-    async def _fetch_comments(self, thread_id: int, limit: int) -> List[dict]:
-        thread = await self._fetch_item(thread_id)
-        if not thread:
-            return []
+    async def _fetch_comments(self, client: httpx.AsyncClient, thread: dict, limit: int) -> List[dict]:
         kids = thread.get("kids", [])[:limit]
         comments = []
         for kid_id in kids:
-            c = await self._fetch_item(kid_id)
+            c = await self._fetch_item(client, kid_id)
             if c and not c.get("deleted") and not c.get("dead"):
                 comments.append(c)
         return comments
@@ -114,6 +111,15 @@ class HackerNewsDiscovery(DiscoverySource):
         return "Software Engineer"
 
     def _extract_location(self, text: str) -> Optional[str]:
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        if lines and '|' in lines[0]:
+            parts = [p.strip() for p in lines[0].split('|')]
+            if len(parts) >= 3:
+                candidate = parts[2]
+                # skip if it's actually a URL (some formats omit location)
+                if candidate and not candidate.lower().startswith(('http://', 'https://')):
+                    return candidate
+
         for pattern in [
             r'[Ll]ocation[:;]\s*([^\n]+)',
             r'[Bb]ased in[:;]\s*([^\n]+)',
@@ -121,6 +127,7 @@ class HackerNewsDiscovery(DiscoverySource):
             m = re.search(pattern, text)
             if m:
                 return m.group(1).strip()
+
         if re.search(r'\bRemote\b', text):
             return "Remote"
         return None
@@ -129,7 +136,7 @@ class HackerNewsDiscovery(DiscoverySource):
         return any(s in text.lower() for s in self.VISA_SIGNALS)
 
     def _mentions_remote(self, text: str) -> bool:
-        return any(w in text.lower() for w in ("remote", "wfh", "work from home", "anywhere", "distributed"))
-
-
-
+        t = text.lower()
+        if any(neg in t for neg in self.REMOTE_NEGATIONS):
+            return any(p in t for p in self.REMOTE_POSITIVE_OVERRIDES)
+        return any(w in t for w in ("remote", "wfh", "work from home", "anywhere", "distributed"))

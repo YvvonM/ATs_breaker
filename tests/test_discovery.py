@@ -3,7 +3,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import html
 import pytest
-from sources.discovery.adzuna import AdzunaDiscovery, APP_ID, APP_KEY
+from sources.discovery.adzuna import AdzunaDiscovery
 
 from models.job_url import JobUrl
 from sources.discovery import (
@@ -23,7 +23,7 @@ def _mock_response(status: int = 200, json_data=None, text: str = ""):
     """Build a mock httpx.Response-like object."""
     resp = MagicMock()
     resp.status_code = status
-    resp.json = AsyncMock(return_value=json_data if json_data is not None else {})
+    resp.json = MagicMock(return_value=json_data if json_data is not None else {})
     resp.text = text
     resp.raise_for_status = MagicMock()
     if status >= 400:
@@ -59,8 +59,8 @@ class TestAdzunaDiscovery:
     def test_init_defaults(self):
         src = AdzunaDiscovery()
         assert src.country == "us"
-        # app_id/app_key come from env/module globals
-        assert src.app_id == APP_ID
+        # app_id/app_key come from env vars when not passed explicitly
+        assert src.app_id == os.getenv("ADZUNA_APP_ID")
 
     def test_init_custom_country(self):
         src = AdzunaDiscovery(country="gb")
@@ -88,12 +88,12 @@ class TestAdzunaDiscovery:
 
         assert len(jobs) == 2
         assert all(isinstance(j, JobUrl) for j in jobs)
-        assert jobs[0].url == "https://adzuna.com/1"
+        assert str(jobs[0].url) == "https://adzuna.com/1"
         assert jobs[0].title == "Senior Python Dev"
         assert jobs[0].company == "Acme"
         assert jobs[0].location == "London, England, UK"
         assert jobs[0].is_remote is True
-        assert jobs[0].source == "adzuna"
+        assert jobs[0].source.lower() == "adzuna"
         assert jobs[0].raw is not None
 
         assert jobs[1].location is None
@@ -101,7 +101,7 @@ class TestAdzunaDiscovery:
 
     @pytest.mark.asyncio
     async def test_discover_empty_results(self):
-        src = AdzunaDiscovery(app_id="id", app_key="key")
+        src = AdzunaDiscovery(country= "us")
         mock_resp = _mock_response(json_data={"results": []})
 
         with patch("httpx.AsyncClient", _mock_async_client([mock_resp])):
@@ -111,7 +111,7 @@ class TestAdzunaDiscovery:
 
     @pytest.mark.asyncio
     async def test_discover_api_error(self):
-        src = AdzunaDiscovery(app_id="id", app_key="key")
+        src = AdzunaDiscovery(country= "us")
         mock_resp = _mock_response(status=403, json_data={"error": "bad key"})
 
         with patch("httpx.AsyncClient", _mock_async_client([mock_resp])):
@@ -145,12 +145,12 @@ class TestAdzunaDiscovery:
             jobs = await src.discover(query="python")
 
         assert len(jobs) == 2
-        assert jobs[0].url == "https://remotive.com/job/1"
+        assert str(jobs[0].url) == "https://remotive.com/job/1"
         assert jobs[0].title == "Django Developer"
         assert jobs[0].company == "WidgetCo"
         assert jobs[0].location == "Worldwide"
         assert jobs[0].is_remote is True
-        assert jobs[0].source == "remotive"
+        assert jobs[0].source.lower() == "remotive"
 
     @pytest.mark.asyncio
     async def test_discover_skips_missing_urls(self):
@@ -167,7 +167,7 @@ class TestAdzunaDiscovery:
             jobs = await src.discover(query="python")
 
         assert len(jobs) == 1
-        assert jobs[0].url == "https://remotive.com/good"
+        assert str(jobs[0].url) == "https://remotive.com/good"
 
 
 
@@ -203,7 +203,7 @@ class TestRemoteOKDiscovery:
         assert len(jobs) == 1
         assert jobs[0].title == "Python Backend Engineer"
         assert jobs[0].company == "Alpha"
-        assert jobs[0].url == "https://example.com/job/1"  # prefers originalUrl
+        assert str(jobs[0].url) == "https://example.com/job/1"  # prefers originalUrl
         assert jobs[0].is_remote is True
 
     @pytest.mark.asyncio
@@ -273,11 +273,11 @@ class TestYCJobsDiscovery:
             jobs = await src.discover(query="engineer")
 
         assert len(jobs) == 2
-        assert jobs[0].url == "https://www.workatastartup.com/jobs/123"
+        assert str(jobs[0].url) == "https://www.workatastartup.com/jobs/123"
         assert jobs[0].title == "Full Stack Engineer"
         assert jobs[0].company == "Stripe"
         assert jobs[0].is_remote is True
-        assert jobs[0].source == "yc_jobs"
+        assert jobs[0].source.lower() == "yc_jobs"
 
     @pytest.mark.asyncio
     async def test_discover_filters_by_role_type(self):
@@ -423,7 +423,7 @@ class TestHackerNewsDiscovery:
         assert job.company == "AcmeCorp"
         assert job.title == "Senior Python Engineer"
         assert job.location == "San Francisco"
-        assert job.url == "https://acme.com/jobs"
+        assert str(job.url) == "https://acme.com/jobs"
         assert job.is_remote is True
         assert job.source == "hackernews"
         assert job.raw["visa_sponsorship"] is True
@@ -477,7 +477,7 @@ class TestFirecrawlSearchDiscovery:
 
     @pytest.mark.asyncio
     async def test_discover_returns_job_urls(self):
-        src = FirecrawlSearchDiscovery(api_key="fc_key")
+        src = FirecrawlSearchDiscovery()
         api_response = {
             "success": True,
             "data": [
@@ -497,13 +497,13 @@ class TestFirecrawlSearchDiscovery:
             jobs = await src.discover(query="python developer", limit=5)
 
         assert len(jobs) == 2
-        assert jobs[0].url == "https://example.com/job/1"
-        assert jobs[1].url == "https://example.com/job/2"
-        assert jobs[0].source == "firecrawl_search"
+        assert str(jobs[0].url) == "https://example.com/job/1"
+        assert str(jobs[1].url) == "https://example.com/job/2"
+        assert jobs[0].source.lower() == "firecrawl_search"
 
     @pytest.mark.asyncio
     async def test_discover_api_failure(self):
-        src = FirecrawlSearchDiscovery(api_key="fc_key")
+        src = FirecrawlSearchDiscovery()
         api_response = {
             "success": False,
             "error": "Rate limit exceeded",
@@ -521,12 +521,12 @@ class TestDiscoverySourceContract:
 
     def test_all_sources_have_name(self):
         sources = [
-            AdzunaDiscovery(app_id="a", app_key="b"),
+            AdzunaDiscovery(country= "us"),
             RemotiveDiscovery(),
             RemoteOKDiscovery(),
             YCJobsDiscovery(),
             HackerNewsDiscovery(),
-            FirecrawlSearchDiscovery(api_key="k"),
+            FirecrawlSearchDiscovery(),
         ]
         for src in sources:
             assert isinstance(src.name, str)

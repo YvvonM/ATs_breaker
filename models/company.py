@@ -4,13 +4,13 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, HttpUrl, Field
 
 class Company(BaseModel):
-    id: UUID = Field(uuid4)
+    id: UUID = Field(default_factory = uuid4)
     name:str 
     website: Optional[HttpUrl] = None
     careers_url: Optional[HttpUrl] = None
     linkedin_url: Optional[HttpUrl] = None
     industry: Optional[str] = None
-    headqauters: Optional[str] = None
+    headquarters: Optional[str] = None
     company_size: Optional[str] = None
     founded_year: Optional[str] = None
     description: Optional[str] = None

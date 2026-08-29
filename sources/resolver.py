@@ -3,6 +3,11 @@ from typing import Optional
 import httpx 
 
 class URLResolver:
+    TRACKING_PARAMS = {
+        "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+        "gh_src", "gh_jid", "lever-source", "ref", "fbclid", "gclid", "source",
+    }
+    
     def __init__(self, timeout: float = 11.0, max_redirects: int = 10):
         self.timeout = timeout 
         self.max_redirects = max_redirects 
@@ -36,16 +41,11 @@ class URLResolver:
 
     async def _try_head_then_get(self, client: httpx.AsyncClient, url: str) -> httpx.Response:
         try:
-            response = await client.head(url, allow_redirects=True)
+            response = await client.head(url)
             if response.status_code < 400:
                 return response
-        except (httpx.RequestError, httpx.HTTPStatusError):
-            if getattr(e, "response", None) and e.response.status_code == 405:
-                pass
-
-            else:
-                raise 
-
+        except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            pass
         return await client.get(url)
 
     def _clean_url(self, url: str) -> str:

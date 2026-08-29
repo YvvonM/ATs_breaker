@@ -9,10 +9,10 @@ from sources.base import DiscoverySource
 class YCJobsDiscovery(DiscoverySource):
     BASE_URL = "https://www.workatastartup.com/jobs"
     VISA_FRIENDLY = {
-        "united states", "usa", "us", "remote", "worldwide",
-        "canada", "united kingdom", "uk", "germany", "netherlands",
-        "ireland", "singapore", "australia", "sweden", "switzerland",
-        "france", "spain", "portugal", "estonia", "lithuania", "dubai", "uae",
+    "united states", "usa", "us", "remote", "worldwide",
+    "canada", "united kingdom", "uk", "gb", "england", "germany", "netherlands",
+    "ireland", "singapore", "australia", "sweden", "switzerland",
+    "france", "spain", "portugal", "estonia", "lithuania", "dubai", "uae",
     }
 
 
@@ -21,7 +21,7 @@ class YCJobsDiscovery(DiscoverySource):
         return "yc_jobs"
 
         
-    async def discover(self, query:str, role_type: Optional[str] = None, limit: int = 100, visa_friendly_only: bool = True, **kwargs,) -> List[JobUrl]:
+    async def discover(self, query:str, role_type: Optional[str] = None, limit: int = 100, visa_friendly_only: bool = False, **kwargs,) -> List[JobUrl]:
         async with httpx.AsyncClient(timeout = 30.0) as client:
             response = await client.get(
                 self.BASE_URL,
@@ -41,31 +41,34 @@ class YCJobsDiscovery(DiscoverySource):
         query_lower = query.lower()
         discovered: List[JobUrl] = []
         for raw in raw_jobs:
-            text = f"{raw.get('title', '')} {raw.get('companyName', '')} {raw.get('roleType', '')}"
-            if query_lower not in text.lower():
+            search_blob = json.dumps(raw).lower()
+            if query_lower not in search_blob:
                 continue
             if role_type and role_type.lower() not in raw.get("roleType", "").lower():
                 continue
-            job = self._parse_result(raw) 
+            job = self._parse_result(raw)
+            if visa_friendly_only and not self._is_visa_friendly(job):
+                continue
             discovered.append(job)
             if len(discovered) >= limit:
                 break
 
-
         return discovered
 
-    def _extract_jobs(self, html_text:str) -> List[dict]:
-        match = re.search(r'&quot;jobs&quot;:\s*(\[.*?\])(?:,&quot;|\s*})', html_text, re.DOTALL)
+    def _extract_jobs(self, html_text: str) -> List[dict]:
+        match = re.search(r'"jobs"\s*:\s*(\[.*?\])\s*,\s*"total"', html_text, re.DOTALL)
         if not match:
             return []
 
         try:
-            json.loads(html.unescape(match.group(1)))
-
+            jobs = json.loads(html.unescape(match.group(1)))
         except json.JSONDecodeError:
             return []
 
+        if not isinstance(jobs, list):
+            return []
 
+        return jobs
     def _parse_result(self, raw: dict) -> JobUrl:
         job_id = raw['id']
         location = raw.get('location','')

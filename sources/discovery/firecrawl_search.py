@@ -3,18 +3,22 @@ import httpx
 from typing import Optional, List 
 from models.job_url import JobUrl
 from sources.base import DiscoverySource
+from dotenv import load_dotenv
+load_dotenv()
 
 class FirecrawlSearchDiscovery(DiscoverySource):
     BASE_URL = "https://api.firecrawl.dev/v1/search"
 
+    
+    def __init__(self):
+        self.api_key = os.getenv("FIRECRAWL_API_KEY")
+        if not self.api_key:
+            raise ValueError("Firecrawl Search requires FIRECRAWL_API_KEY")
+
     @property 
     def name(self) -> str:
         return "firecrawl_search"
-
-    def __init__(self):
-        self.api_key = FIRECRAWL_API_KEY 
-        if not self.api_key:
-            raise ValueError("Firecrawl Search requires FIRECRAWL_API_KEY")
+    
 
     async def discover(self, query:str, limit: int = 10, lang: str = 'en', country: str = "us", **kwargs) -> List[JobUrl]:
         payload = {

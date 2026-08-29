@@ -6,10 +6,11 @@ from sources.base import DiscoverySource
 class RemotiveDiscovery(DiscoverySource):
     BASE_URL = "https://remotive.com/api/remote-jobs"
 
+    @property
     def name(self) -> str:
         return "Remotive"
 
-    async def discover(self, query: str, category: Optional[str], limit: int = 100, **kwargs) -> List[JobUrl]:
+    async def discover(self, query: str, category: Optional[str] = None, limit: int = 100, **kwargs) -> List[JobUrl]:
         params = {"search": query, "limit": limit}
         if category:
             params["category"] = category

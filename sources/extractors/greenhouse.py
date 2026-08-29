@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from bs4 import BeautifulSoup 
 from models.job import Job 
 from sources.base import JobExtractor 
+import httpx
 
 class GreenhouseExtractor(JobExtractor):
     @property
@@ -49,7 +50,6 @@ class GreenhouseExtractor(JobExtractor):
             source=self.name,
             url=url,
             company=company,
-            title=title,
             location=location,
             description=description,
             is_remote=self._is_remote(title, location, description),
@@ -58,8 +58,13 @@ class GreenhouseExtractor(JobExtractor):
             salary_min=None,
             salary_max=None,)
 
+    def _extract_title(self, soup: BeautifulSoup) -> str:
+        h1 = soup.select_one(".app-title") or soup.find("h1")
+        if h1:
+            return h1.get_text(strip=True)
+        return "Unknown"
 
-        def _extract_company(self, soup: BeautifulSoup, title: str) -> str:
+    def _extract_company(self, soup: BeautifulSoup) -> str:
             page_title = soup.find("title")
             if page_title and page_title.string:
                 text = page_title.string.strip()

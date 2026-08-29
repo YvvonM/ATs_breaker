@@ -2,7 +2,7 @@ import re
 from typing import Optional
 import httpx
 from bs4 import BeautifulSoup
-from model.job import Job
+from models.job import Job
 from sources.base import JobExtractor
 
 class WorkableExtractor(JobExtractor):
@@ -11,13 +11,13 @@ class WorkableExtractor(JobExtractor):
         return "Workable"
 
     @property
-    def domain_patters(self):
+    def domain_patterns(self):
         return [
             re.compile(r"apply\.workable\.com", re.I),
         ]
 
     async def extract(self, url: str, html: Optional[str] = None) -> Job:
-        api_job = self._try_api(url)
+        api_job = await self._try_api(url)
         if api_job:
             return api_job
 
@@ -41,7 +41,7 @@ class WorkableExtractor(JobExtractor):
                 data = response.json()
 
             job = next(
-                (j for j in data.get("jobs", []) if j.get("shortcode") == shortcode),
+                (j for j in data.get("jobs", []) if j.get("shortcode") == job_id),
                 None
             )
             if job:
@@ -95,7 +95,7 @@ class WorkableExtractor(JobExtractor):
         is_remote = data.get("telecommuting", False)
         return Job(
             source=self.name,
-            url=original_url,
+            url=url,
             company=company_slug.replace("-", " ").title(),  
             title=data.get("title", "Unknown"),
             location=location,

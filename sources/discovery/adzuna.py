@@ -19,10 +19,10 @@ class AdzunaDiscovery(DiscoverySource):
     BASE_URL = "https://api.adzuna.com/v1/api/jobs"
 
     def __init__(self, country: str = "us"):
-        self.app_id = APP_ID or os.getenv("ADZUNA_APP_ID")
-        self.app_key = APP_KEY or os.getenv("ADZUNA_APP_KEY")
+        self.app_id = os.getenv("ADZUNA_APP_ID")
+        self.app_key = os.getenv("ADZUNA_APP_KEY")
         self.country = country
-        if not self.app_id or self.app_key:
+        if not self.app_id or not self.app_key:
             raise ValueError("AdzunaDiscovery requires ADZUNA_APP_ID and ADZUNA_APP_KEY")
 
     @property
@@ -56,7 +56,7 @@ class AdzunaDiscovery(DiscoverySource):
 
             title = raw.get("title", "")
             description = raw.get("description", "")
-            is_remote = sef._is_remote(title, description)
+            is_remote = self._is_remote(title, description)
             location_parts = raw.get("location", {}).get("area", [])
             location_str = ", ".join(location_parts) if location_parts else None
         

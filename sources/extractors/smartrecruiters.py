@@ -1,7 +1,7 @@
 import re 
 from typing import Optional
 import httpx 
-from model.job import Job
+from models.job import Job
 from bs4 import BeautifulSoup
 from sources.base import JobExtractor
 
@@ -12,7 +12,7 @@ class SmartRecruitersExtractor(JobExtractor):
         return "SmartRecruiters"
 
     @property
-    def domain_patters(self):
+    def domain_patterns(self):
         return [
             re.compile(r"careers\.smartrecruiters\.com", re.I),
             re.compile(r"jobs\.smartrecruiters\.com", re.I),

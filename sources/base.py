@@ -24,6 +24,10 @@ class JobExtractor(ABC):
     def domain_patterns(self) -> List[Pattern]:
         return []
 
+    def matches(self, url: str) -> bool:
+        return any(pattern.search(url) for pattern in self.domain_patterns)
+
+
     @abstractmethod
     async def extract(self, url: str, html: Optional[str] = None) -> Job:
         ...

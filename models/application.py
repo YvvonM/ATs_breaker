@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from typing import Optional 
 
 class Application(BaseModel):
-    id: UUID = Field(uuid4)
+    id: UUID = Field(default_factory = uuid4)
     job_id: UUID 
     company_id: UUID 
     resume_path: Optional[str] = None
@@ -20,5 +20,5 @@ class Application(BaseModel):
     notes: Optional[str] = None
     follow_up_date: Optional[datetime] = None
     rejected_reason: Optional[str] = None
-    offer_recieved: bool = False
+    offer_received: bool = False
     accepted: bool = False

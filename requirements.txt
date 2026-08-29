@@ -1,6 +1,9 @@
 crawl4ai
-langchain-groq 
+langchain-groq
 langchain-core
-pytest 
-pytest-asyncio 
+pytest
+pytest-asyncio
 httpx
+beautifulsoup4
+pydantic
+python-dotenv
