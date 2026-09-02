@@ -2,3 +2,14 @@
 job_scout/__pycache__/
 job_scout/sources/__pycache__/
 .env
+
+test_redis.py
+test_db_setup.py
+test_keyword_extractor.py
+test_neon_connection.py
+test_redis_intergration.py
+test_redis_service.py
+agents/resume_rewriting/__pycache__/
+db/__pycache__/
+models/__pycache__/
+infrastructure/__pycache__/

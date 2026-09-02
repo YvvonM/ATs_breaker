@@ -1,19 +1,20 @@
-from datetime import datetime 
-from pydantic import BaseModel, Field
-from uuid import UUID, uuid4 
-from typing import Optional 
+from datetime import datetime
+from typing import Optional
+from uuid import UUID, uuid4
+from sqlmodel import SQLModel, Field
 
-class Application(BaseModel):
-    id: UUID = Field(default_factory = uuid4)
-    job_id: UUID 
-    company_id: UUID 
+
+class Application(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    job_id: UUID = Field(foreign_key="job.id")
+    company_id: UUID = Field(foreign_key="company.id")
+
     resume_path: Optional[str] = None
     cover_letter_path: Optional[str] = None
     status: str = "Not Applied"
     applied_at: Optional[datetime] = None
-    last_updated: datetime = Field(
-        default_factory = datetime.utcnow
-    )
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+
     recruiter_name: Optional[str] = None
     recruiter_email: Optional[str] = None
     interview_date: Optional[datetime] = None
