@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
-from dtos.base import BaseAgentOutput, AgentMetadata
+from .base import BaseAgentOutput, AgentMetadata
 
 class ReviewScores(BaseModel):
     """Review scores for the resume"""

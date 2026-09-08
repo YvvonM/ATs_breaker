@@ -22,6 +22,6 @@ class ExperienceStructured(BaseModel):
 
 
 class ExperienceAgentOutput(BaseAgentOutput):
-    content: List[ExperienceItem] = Field(..., description="The main content or output produced by the experience extraction agent.")
+    content: str = Field(..., description="The main content or output produced by the experience extraction agent.")
     structured: ExperienceStructured = Field(..., description="Structured representation of the output, including experiences and related metrics.")
     metadata: AgentMetadata = Field(..., description="Metadata related to the agent's execution and output.")

@@ -13,3 +13,4 @@ agents/resume_rewriting/__pycache__/
 db/__pycache__/
 models/__pycache__/
 infrastructure/__pycache__/
+test_dto_helpers.py

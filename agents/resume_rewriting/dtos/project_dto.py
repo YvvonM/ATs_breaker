@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from dtos.base import BaseAgentOutput, AgentMetadata
+from .base import BaseAgentOutput, AgentMetadata
 
 class ProjectItem(BaseModel):
     """Single project entry"""

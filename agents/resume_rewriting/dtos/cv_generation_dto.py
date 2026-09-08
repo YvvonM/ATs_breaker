@@ -11,16 +11,80 @@ from .humanizer_dto import HumanizerAgentOutput
 
 class AllAgentsOutputs(BaseModel):
     """Aggregated outputs from all agents"""
-    keywords: Optional[KeywordAgentOutput] = Field(default = None, description="Output from Keyword Agent")
-    experience: Optional[ExperienceAgentOutput] = Field(default = None, description="Output from Experience Agent")
-    education: Optional[EducationAgentOutput] = Field(default = None, description="Output from Education Agent")
-    skills: Optional[SkillsAgentOutput] = Field(default = None, description="Output from Skills Agent")
-    summary: Optional[SummaryAgentOutput] = Field(default = None, description="Output from Summary Agent")
-    projects: Optional[ProjectsAgentOutput] = Field(default = None, description="Output from Projects Agent")
-    manager: Optional[ManagerAgentOutput] = Field(default = None, description="Output from Manager Agent")
-    humanizer: Optional[HumanizerAgentOutput] = Field(default = None, description="Output from Humanizer Agent")
+    # Use consistent naming with _agent suffix
+    keyword_agent: Optional[KeywordAgentOutput] = Field(
+        default=None, 
+        description="Output from Keyword Agent"
+    )
+    experience_agent: Optional[ExperienceAgentOutput] = Field(
+        default=None, 
+        description="Output from Experience Agent"
+    )
+    education_agent: Optional[EducationAgentOutput] = Field(
+        default=None, 
+        description="Output from Education Agent"
+    )
+    skills_agent: Optional[SkillsAgentOutput] = Field(
+        default=None, 
+        description="Output from Skills Agent"
+    )
+    summary_agent: Optional[SummaryAgentOutput] = Field(
+        default=None, 
+        description="Output from Summary Agent"
+    )
+    projects_agent: Optional[ProjectsAgentOutput] = Field(
+        default=None, 
+        description="Output from Projects Agent"
+    )
+    manager_agent: Optional[ManagerAgentOutput] = Field(
+        default=None, 
+        description="Output from Manager Agent"
+    )
+    humanizer_agent: Optional[HumanizerAgentOutput] = Field(
+        default=None, 
+        description="Output from Humanizer Agent"
+    )
+    def get_agent_names(self) -> list:
+        """Get list of all agent names"""
+        return [
+            "keyword_agent",
+            "experience_agent",
+            "education_agent",
+            "skills_agent",
+            "summary_agent",
+            "projects_agent",
+            "manager_agent",
+            "humanizer_agent",
+        ]
 
+    def get_agent_output(self, agent_name: str):
+        """Helper to get output for a specific agent"""
+        agent_map = {
+            "keyword_agent": self.keyword_agent,
+            "experience_agent": self.experience_agent,
+            "education_agent": self.education_agent,
+            "skills_agent": self.skills_agent,
+            "summary_agent": self.summary_agent,
+            "projects_agent": self.projects_agent,
+            "manager_agent": self.manager_agent,
+            "humanizer_agent": self.humanizer_agent,
+        }
+        return agent_map.get(agent_name)
 
+    def get_completed_agents(self) -> list:
+        """Get list of agents that have completed"""
+        completed = []
+        for name in self.get_agent_names():
+            output = self.get_agent_output(name)
+            if output and output.metadata.status == "completed":
+                completed.append(name)
+        return completed
+    
+    def to_dict(self) -> dict:
+        """Convert to dict, excluding None values"""
+        return {k: v for k, v in self.model_dump().items() if v is not None}
+
+    
 class CVGenerationData(BaseModel):
     run_id: str = Field(description="Unique identifier for the CV generation run")
     application_id: str = Field(description="Unique identifier for the application")
