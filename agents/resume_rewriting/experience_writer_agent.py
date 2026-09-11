@@ -24,6 +24,7 @@ load_dotenv()
 _writer_chain = None
 
 def _get_writer_chain(model: str):
+    global _writer_chain
     if _writer_chain is None:
         llm = ChatGroq(
             model = model,
@@ -48,7 +49,7 @@ def rewrite_experience(
     model: str = EXPERIENCE_MODEL,
 ) -> ExperienceAgentOutput:
     start_time = datetime.now()
-    if not job_description or job_description.strip():
+    if not job_description or not job_description.strip():
         raise ValueError("Job description is empty.")
     if not experiences:
         raise ValueError("No experiences to rewrite.")
@@ -91,7 +92,7 @@ def rewrite_experience(
             bullet_points=exp.get("bullet_points", []),
             skills_demonstrated=exp.get("skills_demonstrated", []),
         )
-        for exp in parsed.get('experinces', [])
+        for exp in parsed.get('experiences', [])
     ]
     keyword_usage = parsed.get("keyword_usage", {})
     structured = ExperienceStructured(

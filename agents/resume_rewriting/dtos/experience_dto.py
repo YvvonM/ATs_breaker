@@ -5,6 +5,7 @@ from .base import BaseAgentOutput, AgentMetadata
 class ExperienceItem(BaseModel):
     title: str = Field(..., description="The job title or position held.")
     company: str = Field(..., description="The name of the company or organization.")
+    duration: str = Field(..., description= "time worked at a particular organization")
     location: Optional[str] = Field(None, description="The location of the job, if available.")
     start_date: Optional[str] = Field(None, description="The start date of the job in YYYY-MM format.")
     end_date: Optional[str] = Field(None, description="The end date of the job in YYYY-MM format, or 'Present' if currently employed.")

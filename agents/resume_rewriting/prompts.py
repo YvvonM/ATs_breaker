@@ -46,10 +46,6 @@ Return ONLY a valid JSON object with this exact structure:
 JSON OUTPUT:"""
 
 
-# ============================================================
-# Experience Parser Agent Prompts
-# ============================================================
-
 EXPERIENCE_PARSER_SYSTEM_PROMPT = """You are a resume parser. Your ONLY job is to extract \
 structured data from a user's experience section.
 
@@ -64,18 +60,18 @@ Rules:
 - Each distinct role becomes one entry in the "experiences" array.
 
 Return ONLY valid JSON in this exact structure:
-{
+{{
   "experiences": [
-    {
+    {{
       "company": "exact company name",
       "title": "exact job title",
       "duration": "date range as written",
       "location": "location or null",
       "bullet_points": ["exact bullet 1", "exact bullet 2"],
       "skills_demonstrated": ["skill1", "skill2"]
-    }
+    }}
   ]
-}"""
+}}"""
 
 EXPERIENCE_PARSER_HUMAN_PROMPT = """EXPERIENCE SECTION (any format):
 ---
@@ -107,26 +103,26 @@ CRITICAL RULES — these are non-negotiable:
 - If a keyword doesn't fit naturally, leave it out rather than forcing it.
 
 Return ONLY valid JSON in this exact structure:
-{
+{{
   "content": "the full rewritten experience section as markdown",
   "experiences": [
-    {
+    {{
       "company": "unchanged",
       "title": "unchanged",
       "duration": "unchanged",
       "location": "unchanged",
       "bullet_points": ["rewritten bullet 1", "rewritten bullet 2"],
       "skills_demonstrated": ["skill1", "skill2"]
-    }
+    }}
   ],
-  "keyword_usage": {
+  "keyword_usage": {{
     "keywords_incorporated": ["keyword1", "keyword2"],
     "keywords_missing": ["keyword3"]
-  },
+  }},
   "total_bullet_points": 8,
   "skills_used": ["skill1", "skill2"],
   "match_score": 85.0
-}"""
+}}"""
 
 EXPERIENCE_WRITER_HUMAN_PROMPT = """JOB DESCRIPTION:
 ---
