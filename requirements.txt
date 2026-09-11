@@ -12,3 +12,7 @@ asyncpg
 redis
 rq
 langchain-openai
+transformers
+peft
+accelerate
+torch

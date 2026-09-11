@@ -17,7 +17,7 @@ class ExperienceStructured(BaseModel):
     total_bullet_points: int = Field(..., description="Total number of bullet points across all experiences.")
     skills_used: List[str] = Field(default=[], description="A list of unique skills used across all experiences.")
     keywords_matched: Optional[List[str]]= Field(default=[], description="A list of keywords matched from the job description.")
-    keywordss_missing: Optional[List[str]] = Field(default=[], description="A list of keywords from the job description that were not found in the experiences.")
+    keywords_missing: Optional[List[str]] = Field(default=[], description="A list of keywords from the job description that were not found in the experiences.")
     match_score: Optional[float] = Field(None, description="A score representing how well the experiences match the job description, if applicable.")
 
 
