@@ -14,5 +14,6 @@ db/__pycache__/
 models/__pycache__/
 infrastructure/__pycache__/
 test_dto_helpers.py
+test_experience_agent.py
 agents/resume_rewriting/dtos/__pycache__/
 agents/__pycache__/
