@@ -2,6 +2,12 @@ import time
 import json 
 from typing import Any, Dict, Optional, List 
 from .redis_client import redis_client
+from datetime import datetime
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 class RedisService:
     def __init__(self):
@@ -15,7 +21,7 @@ class RedisService:
         redis_key = f"{run_id}:{key}"
         try:
             if isinstance(value, (dict, list)):
-                value = json.dumps(value)
+                value = json.dumps(value, cls = DateTimeEncoder)
                 self.client.set(redis_key, value)
                 if ttl or self.default_ttl:
                     self.client.expire(redis_key, ttl or self.default_ttl)

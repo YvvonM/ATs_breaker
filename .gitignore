@@ -17,3 +17,7 @@ test_dto_helpers.py
 test_experience_agent.py
 agents/resume_rewriting/dtos/__pycache__/
 agents/__pycache__/
+test_education_pipeline.py
+test_project_pipeline.py
+test_skills_pipeline.py
+test_summary_pipeline.py
