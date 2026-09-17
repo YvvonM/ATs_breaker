@@ -16,3 +16,4 @@ transformers
 peft
 accelerate
 torch
+psycopg[binary]

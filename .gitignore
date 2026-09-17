@@ -21,3 +21,4 @@ test_education_pipeline.py
 test_project_pipeline.py
 test_skills_pipeline.py
 test_summary_pipeline.py
+infrastructure/db/__pycache__/
