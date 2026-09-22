@@ -8,7 +8,8 @@ from sqlalchemy.pool import NullPool
 from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
 from models import job, company, application, job_url
 from sqlalchemy import text  
-
+from agents.resume_rewriting.dtos import cv_generation
+from infrastructure.db import schema  
 load_dotenv()
 
 def get_database_url() -> str:
@@ -44,7 +45,7 @@ print(f"Connecting to database: {DATABASE_URL[:60]}...")
 #engine = create_async_engine(DATABASE_URL, echo = False)
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  
+    echo=os.getenv("DB_ECHO", "false").lower() == "true",  
     pool_pre_ping=True,  
     pool_size=5,  
     max_overflow=10,

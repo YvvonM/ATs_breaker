@@ -1,10 +1,10 @@
 from .base import AgentStatus, AgentMetadata, BaseAgentOutput
 from .keyword_dto import KeywordAgentOutput, KeywordContent, KeywordStructured, KeywordSentence
-from .experience_dto import ExperienceAgentOutput, ExperienceStructured, ExperienceItem
-from .education_dto import EducationAgentOutput, EducationStructured, EducationItem
-from .summary_dto import SummaryAgentOutput, SummaryStructured
-from .skills_dto import SkillsAgentOutput, SkillsStructured
-from .project_dto import ProjectsAgentOutput, ProjectsStructured, ProjectItem
+from .experience_dto import ExperienceAgentOutput, ExperienceStructured, ExperienceItem,  ExperienceWriterKeywordUsage, ExperienceWriterResponse
+from .education_dto import EducationAgentOutput, EducationStructured, EducationItem, EducationWriterResponse
+from .summary_dto import SummaryAgentOutput, SummaryStructured, SummaryWriterResponse
+from .skills_dto import SkillsAgentOutput, SkillsStructured, SkillsWriterKeywordUsage, SkillsWriterResponse
+from .project_dto import ProjectsAgentOutput, ProjectsStructured, ProjectItem, ProjectsWriterKeywordUsage, ProjectsWriterResponse
 from .manager_dto import ManagerAgentOutput, ManagerContent, ManagerStructured, ReviewScores, ReviewFeedback
 from .humanizer_dto import HumanizerAgentOutput, HumanizerStructured, ChangesSummary, StyleMetrics
 from .cv_generation_dto import AllAgentsOutputs, CVGenerationData
@@ -55,24 +55,33 @@ __all__ = [
     "ExperienceAgentOutput",
     "ExperienceStructured",
     "ExperienceItem",
-    
+    "ExperienceWriterKeywordUsage",
+    "ExperienceWriterResponse",
+
+
     # Education
     "EducationAgentOutput",
     "EducationStructured",
+    "EducationWriterResponse",
     "EducationItem",
     
     # Summary
     "SummaryAgentOutput",
     "SummaryStructured",
+    "SummaryWriterResponse",
     
     # Skills
     "SkillsAgentOutput",
     "SkillsStructured",
+    "SkillsWriterKeywordUsage",
+    "SkillsWriterResponse",
     
     # Projects
     "ProjectsAgentOutput",
     "ProjectsStructured",
     "ProjectItem",
+    "ProjectsWriterKeywordUsage",
+    "ProjectsWriterResponse",
     
     # Manager
     "ManagerAgentOutput",

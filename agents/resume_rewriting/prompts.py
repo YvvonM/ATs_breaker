@@ -1,3 +1,9 @@
+EDUCATION_WRITER_PROMPT_VERSION = "1.0.0"
+EXPERIENCE_WRITER_PROMPT_VERSION = "1.0.0"
+PROJECT_WRITER_PROMPT_VERSION = "1.0.0"
+SKILLS_WRITER_PROMPT_VERSION = "1.0.0"
+SUMMARY_WRITER_PROMPT_VERSION = "1.0.0"
+
 _KEYWORD_SYSTEM_PROMPT = """You are an ATS (Applicant Tracking System) keyword analyst. Your job is to \
 read a job description and find every sentence that contains an ATS-relevant keyword or key phrase -- \
 a specific skill, tool, technology, certification, methodology, framework, or qualification that an \
@@ -138,6 +144,8 @@ NICE-TO-HAVE REQUIREMENTS:
 {nice_to_have}
 
 Rewrite the bullet points for this job. Keep company names, titles, and dates exactly as-is. \
+PREVIOUS REVIEWER FEEDBACK (address these if present):
+{revision_notes}
 Return ONLY the JSON."""
 
 
@@ -254,8 +262,9 @@ CANDIDATE'S CURRENT SKILLS (already categorized):
 
 Rewrite the skills section for this job. Use only skills from the input above. \
 Then, in the same JSON response, report which of the provided keywords appeared \
-in your output (keywords_incorporated) and which did not (keywords_missing).
-
+in your output (keywords_incorporated) and which did not (keywords_missing).\
+PREVIOUS REVIEWER FEEDBACK (address these if present):
+{revision_notes}
 Return ONLY the JSON object."""
 
 # ============================================================
@@ -386,8 +395,9 @@ Rewrite the project descriptions and achievements to align with this job. \
 Keep project names exactly as-is. Do not invent skills, technologies, or outcomes.
 
 Then, in the same JSON response, report which of the provided keywords appeared \
-in your output (keywords_incorporated) and which did not (keywords_missing).
-
+in your output (keywords_incorporated) and which did not (keywords_missing).\
+PREVIOUS REVIEWER FEEDBACK (address these if present):
+{revision_notes}
 Return ONLY the JSON object."""
 
 # ============================================================
@@ -472,7 +482,9 @@ KEYWORDS TO INCORPORATE (where honestly applicable):
 
 Write a new professional summary grounded strictly in the experience and \
 skills data above, tailored to this job description. Do not invent anything \
-not supported by the data.
+not supported by the data.\
+PREVIOUS REVIEWER FEEDBACK (address these if present):
+{revision_notes}
 
 Return ONLY the JSON object as specified. No markdown fences, no explanation."""
 
@@ -606,5 +618,6 @@ the rules above. Keep degree and institution names exactly as-is. Do not \
 invent anything not present in the original data.
 
 Then determine "highest_degree" and "total_educations" as specified.
-
+PREVIOUS REVIEWER FEEDBACK (address these if present):
+{revision_notes}
 Return ONLY the JSON object."""

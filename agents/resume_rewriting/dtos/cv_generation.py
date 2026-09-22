@@ -6,7 +6,7 @@ from sqlmodel import SQLModel, Field, Column, Text, JSON
 class CVGeneration(SQLModel, table = True):
     __tablename__ = "cv_generation"
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    application_id: str = Field(foreign_key="application.id", index = True)
+    application_id: UUID  = Field(foreign_key="application.id", index = True)
     run_id: str = Field(index=True, unique=True, description="Unique identifier for the CV generation run")
     job_description: str = Field(sa_column=Column(Text), description="Job description text")
     master_cv: str = Field(sa_column=Column(Text), description="Master CV text")
