@@ -23,3 +23,5 @@ test_skills_pipeline.py
 test_summary_pipeline.py
 scripts/__pycache__/
 joke_test.py
+infrastructure/db/__pycache__/
+alembic/__pycache__/
