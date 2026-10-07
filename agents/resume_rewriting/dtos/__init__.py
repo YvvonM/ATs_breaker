@@ -8,6 +8,7 @@ from .project_dto import ProjectsAgentOutput, ProjectsStructured, ProjectItem, P
 from .manager_dto import ManagerAgentOutput, ManagerContent, ManagerStructured, ReviewScores, ReviewFeedback
 from .humanizer_dto import HumanizerAgentOutput, HumanizerStructured, ChangesSummary, StyleMetrics
 from .cv_generation_dto import AllAgentsOutputs, CVGenerationData
+from .tier1_dto import Tier1ReviewerResponse
 from .common_dto import AgentName, RevisionStatus, PipelineStatus, TokenUsage
 from .pipeline_dto import (
     PipelineConfig,
@@ -133,4 +134,7 @@ __all__ = [
     "StageRecord",
     "PipelineRecord",
     "has_budget_for_retry"
+
+    #reviewer_dto
+    "Tier1ReviewerResponse"
 ]

@@ -59,7 +59,7 @@ def call_llm(
         temperature=temperature,
         prompt_hash=prompt_hash,
     )
-    cached = repository.get_cached_response(cache_key)
+    cached = repository.get_cache_response(cache_key)
     if cached is not None:
         try:
             response = json.loads(cached["response_json"])

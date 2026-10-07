@@ -25,7 +25,7 @@ def _get_parser_chain(model: str):
     if _parser_chain is None:
         llm = ChatOpenAI(
             model=model,
-            api_key=os.getenv("EXPEREINCE_PARSER"),
+            api_key=os.getenv("EXPERIENCE_PARSER"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0.0
         )

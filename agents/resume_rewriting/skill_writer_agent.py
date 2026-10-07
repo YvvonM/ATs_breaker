@@ -5,18 +5,21 @@ from typing import  Optional, List
 from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from dotenv import load_dotenv
 from .config import SKILLS_MODEL
 from .prompts import (
     SKILLS_WRITER_SYSTEM_PROMPT,
     SKILLS_WRITER_HUMAN_PROMPT,
+    SKILLS_WRITER_PROMPT_VERSION
 )
 from .dtos import (
     SkillsAgentOutput,
     SkillsStructured,
+    SkillsWriterResponse,
     AgentMetadata,
 )
+from agents.resume_rewriting.pipeline._helpers import format_notes
+from infrastructure.llm_client import call_llm
 from infrastructure.redis_service import redis_service
 
 load_dotenv()
@@ -28,12 +31,16 @@ def _get_skills_chain(model: str):
                 model = model,
                 api_key = os.getenv("SKILLS_MODEL"),
                 temperature= 0.5
+            ).with_structured_output(
+                SkillsWriterResponse,
+                method="json_schema",
+                include_raw=True
             )
             chain = ChatPromptTemplate.from_messages([
                 ("system", SKILLS_WRITER_SYSTEM_PROMPT),
                 ("human", SKILLS_WRITER_HUMAN_PROMPT),
             ])
-            _skills_chain = chain| llm| JsonOutputParser()
+            _skills_chain = chain| llm
     
     return _skills_chain
 
@@ -41,10 +48,11 @@ def rewrite_skills(
     skills: SkillsStructured,
     job_description: str,
     keywords: List[str],
-    run_id: Optional[str] = None,
+    run_id: str,
     must_have: Optional[List[str]] = None,
     nice_to_have: Optional[List[str]] = None,
     model: str = SKILLS_MODEL,
+    revision_notes: Optional[List[str]] = None,
 ) -> SkillsAgentOutput:
     start_time = datetime.now()
     if not job_description or not job_description.strip():
@@ -52,8 +60,6 @@ def rewrite_skills(
     if not skills:
         raise ValueError("No Skills to rewrite.")
 
-    if run_id is None:
-        run_id = redis_service.get_run_id()
 
     redis_service.set_job_status(run_id, "processing", "Skills writer started")
 
@@ -68,21 +74,31 @@ def rewrite_skills(
         skills_str = str(skills)
 
     chain = _get_skills_chain(model)
-    try:
-        parsed = chain.invoke({
+    prompt_inputs = {
             "job_description": job_description,
             "skills": skills_str,
             "keywords": ", ".join(keywords) if keywords else "None",
             "must_have": ", ".join(must_have) if must_have else "None specified",
             "nice_to_have": ", ".join(nice_to_have) if nice_to_have else "None specified",
-        })
+            "revision_notes": format_notes(revision_notes),
+        }
 
-    except Exception as e:
-        error_msg = f"skills rewriting failed: {e}"
+    result = call_llm(
+        chain=chain,
+        prompt_inputs=prompt_inputs,
+        run_id=run_id,
+        agent="skills",
+        role="writer",
+        prompt_version=SKILLS_WRITER_PROMPT_VERSION,
+        model=model,
+        temperature=0.5,
+        )
+    if result.error or result.response is None:
+        error_msg = f"skills rewriting failed: {result.error or 'no response'}"
         redis_service.set_job_status(run_id, "failed", error_msg)
-        raise RuntimeError(error_msg) from e
-
+        raise RuntimeError(error_msg)
     
+    parsed = result.response 
     keyword_usage = parsed.get("keyword_usage", {})
     structured = SkillsStructured(
                 categories=parsed.get("categories", {}),
@@ -96,7 +112,7 @@ def rewrite_skills(
         metadata=AgentMetadata(
             model_used=model,
             execution_time=(datetime.now() - start_time).total_seconds(),
-            token_count=0,
+            token_count=result.usage.total,
             status="completed",
             started_at=start_time,
             completed_at=datetime.now(),

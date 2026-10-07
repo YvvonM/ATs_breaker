@@ -5,20 +5,23 @@ from typing import  Optional, List, Dict, Any
 from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from dotenv import load_dotenv
 from .config import SUMMARY_MODEL, MAX_SKILLS_PER_CATEGORY, MAX_EXPERIENCES
 from .prompts import (
     SUMMARY_WRITER_SYSTEM_PROMPT,
     SUMMARY_WRITER_HUMAN_PROMPT,
+    SUMMARY_WRITER_PROMPT_VERSION
 )
 from .dtos import (
     SummaryAgentOutput,
     SummaryStructured,
     ExperienceStructured,
     SkillsStructured,
+    SummaryWriterResponse,
     AgentMetadata,
 )
+from agents.resume_rewriting.pipeline._helpers import format_notes
+from infrastructure.llm_client import call_llm
 from infrastructure.redis_service import redis_service
 
 load_dotenv()
@@ -31,12 +34,17 @@ def _get_summary_chain(model: str):
                 model = model,
                 api_key = os.getenv("SUMMARY_MODEL"),
                 temperature= 0.5
+                ).with_structured_output(
+                    SummaryWriterResponse,
+                    method="json_schema",
+                    include_raw=True,
+
                 )
         chain = ChatPromptTemplate.from_messages([
                 ("system", SUMMARY_WRITER_SYSTEM_PROMPT),
                 ("human", SUMMARY_WRITER_HUMAN_PROMPT),
                 ])
-        _summary_chain = chain| llm| JsonOutputParser()
+        _summary_chain = chain| llm
         
     return _summary_chain
 
@@ -51,7 +59,7 @@ def _trim_skills_to_jd(
     keywords: List[str],
     max_per_categories: int = MAX_SKILLS_PER_CATEGORY
     ) -> Dict[str, List[str]]:
-    keyword_set = (kw.lower().strip() for kw in keywords)
+    keyword_set = {kw.lower().strip() for kw in keywords}
     trimmed: Dict[str, List[str]] = {}
     for category, items in categories.items():
         kept = [s for s in items if s.lower().strip() in keyword_set]
@@ -64,15 +72,14 @@ def rewrite_summary(
     original_summary: str,
     job_description: str,
     keywords: List[str],
-    run_id: Optional[str] = None,
+    run_id:str,
     model: str = SUMMARY_MODEL,
+    revision_notes: Optional[List[str]] = None,
 ) -> SummaryAgentOutput:
     start_time = datetime.now()
     if not job_description or not job_description.strip():
         raise ValueError("Job description is empty.")
 
-    if run_id is None:
-        run_id = redis_service.get_run_id()
 
     exp_data = redis_service.get_job_data(run_id, "experience_agent_output")
     skills_data = redis_service.get_job_data(run_id, "skills_agent_output")
@@ -95,22 +102,31 @@ def rewrite_summary(
 
     redis_service.set_job_status(run_id, "processing", "Summary writer started")
     chain = _get_summary_chain(model)
-    try:
-        parsed = chain.invoke({
+    prompt_inputs = {
             "job_description": job_description,
             "experiences_json": experiences_json,
             "skills_json": skills_json,
             "original_summary": original_summary or "(none provided)",
             "keywords": ", ".join(keywords) if keywords else "None",
-            
-        })
+            "revision_notes": format_notes(revision_notes),
+        }
 
-    except Exception as e:
-        error_msg = f"summary writing failed: {e}"
+    result = call_llm(
+        chain=chain,
+        prompt_inputs=prompt_inputs,
+        run_id=run_id,
+        agent="summary",
+        role="writer",
+        prompt_version=SUMMARY_WRITER_PROMPT_VERSION,
+        model=model,
+        temperature=0.5,
+        )
+    if result.error or result.response is None:
+        error_msg = f"summary rewriting failed: {result.error or 'no response'}"
         redis_service.set_job_status(run_id, "failed", error_msg)
-        raise RuntimeError(error_msg) from e
-
+        raise RuntimeError(error_msg)
     
+    parsed = result.response 
     
     structured = SummaryStructured(
                 summary_type= parsed.get('summary_type', ''),
@@ -127,7 +143,7 @@ def rewrite_summary(
         metadata=AgentMetadata(
             model_used=model,
             execution_time=(datetime.now() - start_time).total_seconds(),
-            token_count=0,
+            token_count=result.usage.total,
             status="completed",
             started_at=start_time,
             completed_at=datetime.now(),

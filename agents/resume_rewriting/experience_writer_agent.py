@@ -5,19 +5,23 @@ from typing import  Optional, List
 from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from dotenv import load_dotenv
 from .config import EXPERIENCE_MODEL
 from .prompts import (
     EXPERIENCE_WRITER_SYSTEM_PROMPT,
     EXPERIENCE_WRITER_HUMAN_PROMPT,
+    EXPERIENCE_WRITER_PROMPT_VERSION
 )
 from .dtos import (
     ExperienceAgentOutput,
     ExperienceStructured,
     ExperienceItem,
     AgentMetadata,
+    ExperienceWriterResponse
+
 )
+from agents.resume_rewriting.pipeline._helpers import format_notes
+from infrastructure.llm_client import call_llm
 from infrastructure.redis_service import redis_service
 
 load_dotenv()
@@ -28,14 +32,18 @@ def _get_writer_chain(model: str):
     if _writer_chain is None:
         llm = ChatGroq(
             model = model,
-            api_key = os.getenv("EXPEREINCE_WRITER"),
+            api_key = os.getenv("EXPERIENCE_WRITER"),
             temperature= 0.5
+        ).with_structured_output(
+            ExperienceWriterResponse,
+            method="json_schema",
+            include_raw=True,
         )
         chain = ChatPromptTemplate.from_messages([
             ("system", EXPERIENCE_WRITER_SYSTEM_PROMPT),
             ("human", EXPERIENCE_WRITER_HUMAN_PROMPT),
         ])
-        _writer_chain = chain| llm| JsonOutputParser()
+        _writer_chain = chain| llm
 
     return _writer_chain
 
@@ -43,10 +51,11 @@ def rewrite_experience(
     experiences: List[ExperienceItem],
     job_description: str,
     keywords: List[str],
-    run_id: Optional[str] = None,
+    run_id: str,
     must_have: Optional[List[str]] = None,
     nice_to_have: Optional[List[str]] = None,
     model: str = EXPERIENCE_MODEL,
+    revision_notes: Optional[List[str]] = None,
 ) -> ExperienceAgentOutput:
     start_time = datetime.now()
     if not job_description or not job_description.strip():
@@ -54,8 +63,6 @@ def rewrite_experience(
     if not experiences:
         raise ValueError("No experiences to rewrite.")
 
-    if run_id is None:
-        run_id = redis_service.get_run_id()
 
     redis_service.set_job_status(run_id, "processing", "Experience writer started")
     experiences_json = [
@@ -65,30 +72,42 @@ def rewrite_experience(
             "duration": e.duration,
             "location": e.location,
             "bullet_points": e.bullet_points,
+            "skills_demonstrated": e.skills_demonstrated, 
         }
         for e in experiences
     ]
     chain = _get_writer_chain(model)
-    try:
-        parsed = chain.invoke({
-            "job_description": job_description,
-            "experiences_json": experiences_json,
-            "keywords": ", ".join(keywords) if keywords else "None",
-            "must_have": ", ".join(must_have) if must_have else "None specified",
-            "nice_to_have": ", ".join(nice_to_have) if nice_to_have else "None specified",
-        })
-
-    except Exception as e:
-        error_msg = f"Experience rewriting failed: {e}"
+    prompt_inputs = {
+        "job_description": job_description,
+        "experiences_json": experiences_json,
+        "keywords": ", ".join(keywords) if keywords else "None",
+        "must_have": ", ".join(must_have) if must_have else "None specified",
+        "nice_to_have": ", ".join(nice_to_have) if nice_to_have else "None specified",
+        "revision_notes": format_notes(revision_notes),      # ← added
+    }
+    result = call_llm(
+        chain=chain,
+        prompt_inputs=prompt_inputs,
+        run_id=run_id,
+        agent="experience",
+        role="writer",
+        prompt_version=EXPERIENCE_WRITER_PROMPT_VERSION,     # ← new import
+        model=model,
+        temperature=0.5,
+    )
+    if result.error or result.response is None:
+        error_msg = f"Experience rewriting failed: {result.error or 'no response'}"
         redis_service.set_job_status(run_id, "failed", error_msg)
-        raise RuntimeError(error_msg) from e
+        raise RuntimeError(error_msg)
+
+    parsed = result.response
 
     rewritten_experiences = [
         ExperienceItem(
             company=exp.get("company", ""),
             title=exp.get("title", ""),
-            duration=exp.get("duration", ""),
-            location=exp.get("location"),
+            duration=exp.get("duration", None),
+            location=exp.get("location", None),
             bullet_points=exp.get("bullet_points", []),
             skills_demonstrated=exp.get("skills_demonstrated", []),
         )
@@ -111,7 +130,7 @@ def rewrite_experience(
         metadata=AgentMetadata(
             model_used=model,
             execution_time=(datetime.now() - start_time).total_seconds(),
-            token_count=0,
+            token_count=result.usage.total,
             status="completed",
             started_at=start_time,
             completed_at=datetime.now(),

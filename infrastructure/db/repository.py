@@ -6,6 +6,7 @@ from uuid import uuid4
 from sqlalchemy import delete, func, select, update
 from sqlmodel import Session
 from infrastructure.db.sync_engine import sync_session
+from agents.resume_rewriting.dtos import cv_generation  
 from infrastructure.db.schema import (
     LLMCallRecordRow,
     LLMResponseCache,
@@ -18,7 +19,7 @@ def _utcnow() -> datetime:
 
 def get_cache_response(cache_key: str) -> Optional[Dict[str, Any]]:
     try:
-        with sync_session as session:
+        with sync_session() as session:
             row = session.get(LLMResponseCache, cache_key)
             if row is None:
                 return None 

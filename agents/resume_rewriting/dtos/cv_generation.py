@@ -21,3 +21,7 @@ class CVGeneration(SQLModel, table = True):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp when the CV generationwas created")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp when the CV generation was last updated")
     completed_at: Optional[datetime] = Field(default = None, description="Timestamp when the CV generation was completed")
+    status: str = Field(default="pending", index=True)
+    error: Optional[str] = Field(default=None)
+    total_input_tokens: int = Field(default=0)
+    total_output_tokens: int = Field(default=0)

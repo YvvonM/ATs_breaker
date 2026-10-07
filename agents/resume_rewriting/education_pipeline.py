@@ -40,7 +40,7 @@ def process_education(
         error_msg = f"Education pipeline failed: {e}"
         redis_service.set_job_status(run_id, "failed", error_msg)
         return EducationAgentOutput(
-            content=[],
+            content="",
             structured=EducationStructured(
                 educations=[], highest_degree=None, total_educations=0,
                 

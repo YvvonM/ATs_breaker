@@ -5,19 +5,22 @@ from typing import  Optional, List, Dict, Any
 from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from dotenv import load_dotenv
 from .config import EDUCATION_MODEL
 from .prompts import (
     EDUCATION_WRITER_SYSTEM_PROMPT,
     EDUCATION_WRITER_HUMAN_PROMPT,
+    EDUCATION_WRITER_PROMPT_VERSION
 )
 from .dtos import (
     EducationItem,
     EducationAgentOutput,
     EducationStructured,
+    EducationWriterResponse,
     AgentMetadata
 )
+from agents.resume_rewriting.pipeline._helpers import format_notes
+from infrastructure.llm_client import call_llm
 from infrastructure.redis_service import redis_service
 
 load_dotenv()
@@ -29,12 +32,16 @@ def _get_education_chain(model: str):
             model = model,
             api_key = os.getenv("EDUCATION_MODEL"),
             temperature= 0.5
-            )
+            ).with_structured_output(
+                EducationWriterResponse,
+                method="json_schema",
+                include_raw=True,
+                )
         chain = ChatPromptTemplate.from_messages([
                 ("system", EDUCATION_WRITER_SYSTEM_PROMPT),
                 ("human", EDUCATION_WRITER_HUMAN_PROMPT),
             ])
-        _education_chain = chain| llm| JsonOutputParser()
+        _education_chain = chain| llm
     
     return _education_chain
 
@@ -43,14 +50,14 @@ def rewrite_education(
     education: List[EducationItem],
     job_description: str,
     keywords: List[str],
-    run_id: Optional[str] = None,
+    run_id: str,
     model: str = EDUCATION_MODEL,
+    revision_notes: Optional[List[str]] = None,
 ) -> EducationAgentOutput:
     start_time = datetime.now()
     if not education:
         raise ValueError("Job description is empty.")
-    if run_id is None:
-        run_id = redis_service.get_run_id()
+    
 
     redis_service.set_job_status(run_id, "processing", "Education writer started")
     education_json = [
@@ -65,19 +72,28 @@ def rewrite_education(
         for e in education
     ]
     chain = _get_education_chain(model)
-    try:
-        parsed = chain.invoke({
-            "job_description": job_description,
-            "education_json": education_json,
-            "keywords": ", ".join(keywords) if keywords else "None",
-           
-        })
-
-    except Exception as e:
-        error_msg = f"Education rewriting failed: {e}"
+    prompt_inputs = {
+        "education_json": education_json,
+        "job_description": job_description,
+        "keywords": ", ".join(keywords) if keywords else "None",
+        "revision_notes": format_notes(revision_notes),
+    }
+    result = call_llm(
+    chain=chain,
+    prompt_inputs=prompt_inputs,
+    run_id=run_id,
+    agent="education",
+    role="writer",
+    prompt_version=EDUCATION_WRITER_PROMPT_VERSION,
+    model=model,
+    temperature=0.5,
+    )
+    if result.error or result.response is None:
+        error_msg = f"Education rewriting failed: {result.error or 'no response'}"
         redis_service.set_job_status(run_id, "failed", error_msg)
-        raise RuntimeError(error_msg) from e
+        raise RuntimeError(error_msg)
 
+    parsed = result.response 
     rewritten_education = [
         EducationItem(
             degree=edu.get("degree", ""),
@@ -100,7 +116,7 @@ def rewrite_education(
         metadata=AgentMetadata(
             model_used=model,
             execution_time=(datetime.now() - start_time).total_seconds(),
-            token_count=0,
+            token_count=result.usage.total,
             status="completed",
             started_at=start_time,
             completed_at=datetime.now(),

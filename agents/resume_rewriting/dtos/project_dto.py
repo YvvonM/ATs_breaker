@@ -15,6 +15,8 @@ class ProjectsStructured(BaseModel):
     total_projects: int = Field(description="Total number of projects")
     skills_used: List[str] = Field(default_factory=list, description="All skills mentioned across projects")
     project_types: List[str] = Field(default_factory=list, description="Types of projects")
+    keywords_matched: List[str] = Field(default_factory=list, description="Keywords from JD that were incorporated")
+    keywords_missing: List[str] = Field(default_factory=list, description="Keywords from JD that are missing")
 
 class ProjectsWriterKeywordUsage(BaseModel):
     keywords_incorporated: List[str] = Field(
